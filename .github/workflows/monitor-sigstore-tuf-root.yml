@@ -1,0 +1,116 @@
+name: Monitor Sigstore TUF Root
+
+on:
+  # Allows running this workflow manually from the Actions tab
+  workflow_dispatch:
+  # Runs the workflow every day at midnight UTC
+  schedule:
+    - cron: '0 0 * * *'
+
+permissions: {}
+
+jobs:
+  check-for-new-roots:
+    name: Monitor Sigstore TUF repository for new roots 
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to commit changes back to the repository
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Go
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version-file: './go.mod'
+          check-latest: true
+
+      - name: Fetch new TUF root files
+        id: fetch
+        run: |
+          ROOTS_DIR="tuf-roots/sigstore"
+          BASE_URL="https://tuf-repo-cdn.sigstore.dev"
+          TEMP_DIR=$(mktemp -d)
+          NEW_FILES_FOUND=false
+
+          mkdir -p "$ROOTS_DIR"
+
+          # Find the latest version number from existing files like '10.root.json'
+          LATEST_LOCAL_VERSION=$(ls "$ROOTS_DIR"/*.root.json 2>/dev/null | sort -t/ -k2 -V | sed -nE 's/.*\/([0-9]+)\.root\.json/\1/p' | tail -n 1)
+
+          if [[ -z "$LATEST_LOCAL_VERSION" ]]; then
+            # If no local files, start checking from version 1
+            NEXT_VERSION=1
+            echo "No local root files found. Starting check from version 1."
+          else
+            NEXT_VERSION=$((LATEST_LOCAL_VERSION + 1))
+            echo "Latest local root is version $LATEST_LOCAL_VERSION. Checking for version $NEXT_VERSION."
+          fi
+
+          while true; do
+            URL="$BASE_URL/$NEXT_VERSION.root.json"
+            FILE_PATH="$TEMP_DIR/$NEXT_VERSION.root.json"
+
+            if curl -fsSL -o "$FILE_PATH" "$URL"; then
+              echo "Successfully downloaded $URL"
+              NEW_FILES_FOUND=true
+              NEXT_VERSION=$((NEXT_VERSION + 1))
+            else
+              echo "Version $NEXT_VERSION.root.json not found at $URL. Stopping."
+              # Clean up empty file created by -o on failure
+              rm -f "$FILE_PATH"
+              break
+            fi
+          done
+
+          echo "new_files_found=$NEW_FILES_FOUND" >> $GITHUB_OUTPUT
+          echo "temp_dir=$TEMP_DIR" >> $GITHUB_OUTPUT
+
+      - name: Add entries to transparency log
+        if: steps.fetch.outputs.new_files_found == 'true'
+        env:
+          LOG_PRIVATE_KEY: ${{ secrets.LOG_PRIVATE_KEY }}
+          STEPS_FETCH_OUTPUTS_TEMP_DIR: ${{ steps.fetch.outputs.temp_dir }}
+        run: |
+          LOG_DIR="tlog"
+          # Use the temporary directory containing only the new files
+          ENTRIES_DIR="${STEPS_FETCH_OUTPUTS_TEMP_DIR}"
+          
+          echo "Adding new entries to the log..."
+          for FILE in $(ls "$ENTRIES_DIR"/*.root.json | sort -t/ -k2 -V); do
+            echo "Canonicalizing TUF root $FILE..."
+            go run cmd/olpc-cjson/main.go --input="$FILE" --output="$FILE.cjson"
+
+            echo "Adding $FILE to tlog..."
+            go run github.com/transparency-dev/tessera/cmd/examples/posix-oneshot@main --storage_dir="$LOG_DIR" --entries="$FILE.cjson"
+
+            echo "Appending inclusion proof to $FILE..."
+            go run cmd/proof/main.go --log-path="$LOG_DIR" --root-path="$FILE"
+
+            echo "Verifying inclusion proof for $FILE..."
+            go run cmd/verify/main.go --root-path="$FILE" --verifier-path=public.key
+          done
+
+      - name: Verify log integrity
+        if: steps.fetch.outputs.new_files_found == 'true'
+        run: |
+          LOG_DIR="tlog"
+          echo "Verifying log integrity with fsck..."
+          go run github.com/transparency-dev/tessera/cmd/fsck@main --storage_url="file:///$(pwd)/$LOG_DIR" --public_key=public.key --ui=false
+
+      - name: Move new root files to final destination
+        if: steps.fetch.outputs.new_files_found == 'true'
+        run: |
+          mv ${STEPS_FETCH_OUTPUTS_TEMP_DIR}/*.root.json tuf-roots/sigstore/
+        env:
+          STEPS_FETCH_OUTPUTS_TEMP_DIR: ${{ steps.fetch.outputs.temp_dir }}
+
+      - name: Commit new TUF root files
+        if: steps.fetch.outputs.new_files_found == 'true'
+        uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7.1.0
+        with:
+          commit_message: "ci: Add new TUF root files and update transparency log tiles"
+          file_pattern: "tuf-roots/sigstore/*.root.json tlog/*"
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "github-actions[bot]@users.noreply.github.com"
