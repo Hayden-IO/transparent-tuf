@@ -6,12 +6,12 @@ import (
 	"log"
 	"os"
 
-	tlogproof "github.com/Hayden-IO/transparent-tuf/internal/proof"
-	"github.com/Hayden-IO/transparent-tuf/internal/witness"
 	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 	f_log "github.com/transparency-dev/formats/log"
 	"github.com/transparency-dev/formats/note"
+	tlogproof "github.com/transparency-dev/formats/proof"
+	"github.com/transparency-dev/formats/witness"
 	"github.com/transparency-dev/merkle/proof"
 	"github.com/transparency-dev/merkle/rfc6962"
 )

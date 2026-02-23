@@ -9,10 +9,10 @@ import (
 	"log"
 	"os"
 
-	tlogproof "github.com/Hayden-IO/transparent-tuf/internal/proof"
 	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 	logformat "github.com/transparency-dev/formats/log"
+	tlogproof "github.com/transparency-dev/formats/proof"
 	"github.com/transparency-dev/merkle/proof"
 	"github.com/transparency-dev/merkle/rfc6962"
 	"github.com/transparency-dev/tessera/client"

@@ -31,6 +31,8 @@ github.com/theupdateframework/go-tuf/v2 v2.4.1 h1:K6ewW064rKZCPkRo1W/CTbTtm/+IB4
 github.com/theupdateframework/go-tuf/v2 v2.4.1/go.mod h1:Nex2enPVYDFCklrnbTzl3OVwD7fgIAj0J5++z/rvCj8=
 github.com/transparency-dev/formats v0.1.0 h1:oL0zUFuYUjg8AbtjPMnIRDmjbaHo5jCjEWU5yaNuz0g=
 github.com/transparency-dev/formats v0.1.0/go.mod h1:d2FibUOHfCMdCe/+/rbKt1IPLBbPTDfwj46kt541/mU=
+github.com/transparency-dev/formats v0.1.1-0.20260223120042-3a434735af50 h1:mOpRwpywe4Jr+OUYQUSflS0PYwN0U66RJlGjZBqlfX8=
+github.com/transparency-dev/formats v0.1.1-0.20260223120042-3a434735af50/go.mod h1:LBGppE87xjC3KM7YZeJgJ80d87+6Y6VaJmuWKG8+z2I=
 github.com/transparency-dev/merkle v0.0.2 h1:Q9nBoQcZcgPamMkGn7ghV8XiTZ/kRxn1yCG81+twTK4=
 github.com/transparency-dev/merkle v0.0.2/go.mod h1:pqSy+OXefQ1EDUVmAJ8MUhHB9TXGuzVAT58PqBoHz1A=
 github.com/transparency-dev/tessera v1.0.2 h1:PNfGPFfJHpCFVswlrsQvRghxqYz2xy/OtP8qTjJuzFQ=
